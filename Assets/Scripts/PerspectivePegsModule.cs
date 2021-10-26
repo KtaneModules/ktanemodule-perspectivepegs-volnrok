@@ -936,7 +936,7 @@ public class PerspectivePegsModule : MonoBehaviour
         if (split[0] == "colorblind")
         {
             EnableColorblindMode();
-            yield return "Colorblind mode enabled!";
+            yield return null;
         }
         else if (split[0] == "rotate" || split[0] == "look")
         {
