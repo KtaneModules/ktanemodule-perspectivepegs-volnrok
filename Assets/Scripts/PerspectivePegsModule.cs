@@ -34,8 +34,10 @@ public class PerspectivePegsModule : MonoBehaviour
     private bool isComplete = false;
 
     private MeshRenderer[,] ColourMeshes;
+    private TextMesh[,] TextMeshes;
     private KMSelectable[] Pegs;
     private Material[] Mats;
+    private string[] Letters;
 
     private bool[] IsMoving = { false, false, false, false, false };
     private bool[] IsUp = { false, false, false, false, false };
@@ -58,6 +60,7 @@ public class PerspectivePegsModule : MonoBehaviour
         moduleId = moduleIdCounter++;
 
         ColourMeshes = new MeshRenderer[5, 5];
+        TextMeshes = new TextMesh[5, 5];
 
         // Populate the grid
         for (int x = 0; x < 5; x++)
@@ -69,11 +72,13 @@ public class PerspectivePegsModule : MonoBehaviour
                 Transform tr = quad.transform.Find(s);
                 GameObject go = tr.gameObject;
                 ColourMeshes[x, y] = go.GetComponent<MeshRenderer>();
+                TextMeshes[x, y] = go.transform.Find("ColourText").GetComponent<TextMesh>();
             }
         }
 
         Pegs = new KMSelectable[] { Peg0, Peg1, Peg2, Peg3, Peg4 };
         Mats = new Material[] { MatRed, MatYellow, MatGreen, MatBlue, MatPurple };
+        Letters = new string[] { "R", "Y", "G", "B", "P" };
 
         Peg0.OnInteract += delegate () { HandlePress(0); return false; };
         Peg1.OnInteract += delegate () { HandlePress(1); return false; };
@@ -532,8 +537,8 @@ public class PerspectivePegsModule : MonoBehaviour
             }
         };
 
-        string serialNum = BombInfo.GetSerialNumber();
-        int batteryCount = BombInfo.GetBatteryCount();
+        string serialNum = KModkit.KMBombInfoExtensions.GetSerialNumber(BombInfo);
+        int batteryCount = KModkit.KMBombInfoExtensions.GetBatteryCount(BombInfo);
 
         // Determine chosen colour
         string output = "";
@@ -611,11 +616,14 @@ public class PerspectivePegsModule : MonoBehaviour
         MoveAllUp();
 
         // Set colours
+        var isColorblind = GetComponent<KMColorblindMode>().ColorblindModeActive;
         for (int x = 0; x < 5; x++)
         {
             for (int y = 0; y < 5; y++)
             {
                 ColourMeshes[x, y].material = Mats[result[x].colours[y]];
+                TextMeshes[x, y].text = Letters[result[x].colours[y]];
+                TextMeshes[x, y].gameObject.SetActive(isColorblind);
             }
         }
     }
@@ -888,6 +896,17 @@ public class PerspectivePegsModule : MonoBehaviour
 
     }
 
+    void EnableColorblindMode()
+    {
+        for (int x = 0; x < 5; x++)
+        {
+            for (int y = 0; y < 5; y++)
+            {
+                TextMeshes[x, y].gameObject.SetActive(true);
+            }
+        }
+    }
+
     void TwitchHandleForcedSolve()
     {
         //Move all of the pegs down.
@@ -914,7 +933,12 @@ public class PerspectivePegsModule : MonoBehaviour
 
         List<string> split = command.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries).ToList();
 
-        if (split[0] == "rotate" || split[0] == "look")
+        if (split[0] == "colorblind")
+        {
+            EnableColorblindMode();
+            yield return "Colorblind mode enabled!";
+        }
+        else if (split[0] == "rotate" || split[0] == "look")
         {
             if (split[0] == "look" && (split.Count == 1 || GetPosition(split[1]) < 0))
             {
@@ -1020,8 +1044,8 @@ public class PerspectivePegsModule : MonoBehaviour
                         skipped = true;
                         break;
                     default:
-                        yield return !pegs.Any() && !skipped 
-                            ? string.Format("sendtochaterror Valid commands are 'look', 'rotate', 'press', or 'submit'") 
+                        yield return !pegs.Any() && !skipped
+                            ? string.Format("sendtochaterror Valid commands are 'look', 'rotate', 'press', 'submit', or 'colorblind'")
                             : string.Format("sendtochaterror I don't know what you mean by the {0} peg.", pegtopress);
                         yield break;
                 }
